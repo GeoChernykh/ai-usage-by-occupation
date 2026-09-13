@@ -24,7 +24,6 @@ const SOURCE_COMPARE_METRICS = [
 const PLOTLY_CONFIG = { responsive: true, displayModeBar: false };
 
 const SOURCE_LABELS = { claude_ai: "Consumer (Claude apps)", "1p_api": "Enterprise API" };
-const MONTH_LABELS = { "2026-04-01": "Apr", "2026-05-01": "May" };
 
 let indexData = null;
 let currentSoc = null;
@@ -124,6 +123,7 @@ function renderAll() {
   renderArtifactMix();
   renderSourceCompare();
   renderSkillGap();
+  renderMajorGroupTrend();
   renderNeighbours();
 }
 
@@ -288,6 +288,32 @@ function renderSkillGap() {
   }
 }
 
+const PERIOD_MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function formatPeriod(dateStr) {
+  const [y, m] = dateStr.split("-");
+  return `${PERIOD_MONTH_NAMES[parseInt(m, 10) - 1]} ${y}`;
+}
+
+function renderMajorGroupTrend() {
+  const panel = document.getElementById("major-group-trend-panel");
+  const div = document.getElementById("major-group-trend-chart");
+  const jobFamily = currentOccData.wage?.job_family;
+  const trend = jobFamily ? indexData.major_group_trend?.[jobFamily] : undefined;
+  if (!trend) {
+    panel.hidden = true;
+    return;
+  }
+  panel.hidden = false;
+  const periods = Object.keys(trend).sort();
+  div.innerHTML = "";
+  Plotly.newPlot(div, [{
+    type: "scatter", mode: "lines+markers",
+    x: periods.map(formatPeriod),
+    y: periods.map((p) => trend[p]),
+    marker: { color: "#7aa2f7" }, line: { color: "#7aa2f7" },
+  }], baseLayout({ yaxis: { title: "% of category usage" }, height: 220, margin: { l: 60, r: 20, t: 10, b: 40 } }), PLOTLY_CONFIG);
+}
+
 function renderNeighbours() {
   const panel = document.getElementById("neighbours-panel");
   const tbody = document.querySelector("#neighbours-table tbody");
@@ -350,13 +376,13 @@ function wireControls() {
       renderAll();
     });
   });
-  document.querySelectorAll("#month-toggle .toggle").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll("#month-toggle .toggle").forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      currentMonth = btn.dataset.month;
-      renderAll();
-    });
+  document.getElementById("month-toggle").addEventListener("click", (e) => {
+    const btn = e.target.closest(".toggle");
+    if (!btn) return;
+    document.querySelectorAll("#month-toggle .toggle").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentMonth = btn.dataset.month;
+    renderAll();
   });
 
   const search = document.getElementById("occ-search");
@@ -368,9 +394,23 @@ function wireControls() {
   document.getElementById("download-csv").addEventListener("click", downloadCsv);
 }
 
+function populatePeriodToggle() {
+  const container = document.getElementById("month-toggle");
+  container.innerHTML = "";
+  currentMonth = indexData.months[indexData.months.length - 1];
+  for (const month of indexData.months) {
+    const btn = document.createElement("button");
+    btn.className = "toggle" + (month === currentMonth ? " active" : "");
+    btn.dataset.month = month;
+    btn.textContent = formatPeriod(month);
+    container.appendChild(btn);
+  }
+}
+
 async function init() {
   await loadIndex();
   populateSearch();
+  populatePeriodToggle();
   wireControls();
   const params = new URLSearchParams(window.location.search);
   const socParam = params.get("soc");

@@ -18,10 +18,7 @@
       <button data-source="claude_ai" class="toggle active">Consumer (Claude apps)</button>
       <button data-source="1p_api" class="toggle">Enterprise API</button>
     </div>
-    <div class="toggle-group" id="month-toggle">
-      <button data-month="2026-04-01" class="toggle">Apr</button>
-      <button data-month="2026-05-01" class="toggle active">May</button>
-    </div>
+    <div class="toggle-group" id="month-toggle"></div>
   </div>
 </header>
 
@@ -58,6 +55,17 @@
     <section class="panel">
       <h2>Skill gap</h2>
       <div id="skill-gap"></div>
+    </section>
+
+    <section class="panel" id="major-group-trend-panel" hidden>
+      <h2>Usage trend by job family (coarse groups only)</h2>
+      <p class="panel-caveat">
+        Only two months (Apr, May 2026) are published at the individual-occupation
+        level. This chart adds the one earlier data point that exists at all — Aug
+        2025 — but only at the coarse SOC-major-group level, from a different report
+        vintage, so treat the shape as directional, not precise.
+      </p>
+      <div id="major-group-trend-chart"></div>
     </section>
 
     <section class="panel" id="neighbours-panel" hidden>

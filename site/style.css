@@ -113,6 +113,8 @@ h1 { font-size: 1.25rem; margin: 0 0 12px; }
 
 #time-compression .headline { font-size: 1.2rem; margin-bottom: 10px; }
 
+.panel-caveat { color: var(--muted); font-size: 0.85rem; margin: 0 0 12px; }
+
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
 th { color: var(--muted); font-weight: 500; font-size: 0.85rem; }

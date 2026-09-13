@@ -13,6 +13,14 @@ Source schema notes (see probe_results.md for the full probe):
   values -- omit those keys rather than emit -1. isBright (True/False) is the
   actual Bright-Outlook flag; JobForecast is a projected-employment count, not a
   label, so "forecast" is derived from isBright instead.
+- major_group_trend: no release other than 2026_06_26 has usage data at the detailed
+  occupation level (see probe_results.md), so a real quarter/year comparison isn't
+  buildable. The one extra real data point is release_2025_09_15's enriched Aug-2025
+  file, which has usage share at SOC-*major-group* granularity only (23 groups,
+  facet=soc_occupation level=0, variable=soc_pct). We roll the two detailed months up
+  to the same major-group granularity (median of "pct" across occupations sharing a
+  JobFamily) so all three points are on the same footing, and expose it as its own
+  index.json block, never blended into per-occupation metrics.
 """
 import json
 import math
@@ -27,6 +35,11 @@ FILES = {
 }
 JOB_EXPOSURE_PATH = "data/labor_market_impacts/job_exposure.csv"
 WAGE_DATA_PATH = "data/release_2025_02_10/wage_data.csv"
+MAJOR_GROUP_TREND_PATH = ("data/release_2025_09_15/data/output/"
+                           "aei_enriched_claude_ai_2025-08-04_to_2025-08-11.csv")
+MAJOR_GROUP_TREND_DATE = "2025-08-01"
+# release_2025_09_15 spells this SOC major group differently from wage_data.JobFamily.
+JOB_FAMILY_ALIASES = {"Educational Instruction and Library": "Education, Training, and Library"}
 
 COLS = ["node_name", "node_external_id", "metric_id", "date_start", "value",
         "category_name", "hierarchy_level", "geo_id"]
@@ -79,6 +92,18 @@ def load_wage_data():
     return df.set_index("soc")
 
 
+def load_major_group_trend():
+    """soc_pct per SOC major group (wage_data.JobFamily spelling) for Aug 2025, GLOBAL."""
+    df = pd.read_csv(MAJOR_GROUP_TREND_PATH, dtype=str)
+    mask = ((df["facet"] == "soc_occupation") & (df["level"] == "0")
+             & (df["geo_id"] == "GLOBAL") & (df["variable"] == "soc_pct"))
+    sl = df.loc[mask, ["cluster_name", "value"]].copy()
+    sl["value"] = pd.to_numeric(sl["value"], errors="coerce")
+    sl["job_family"] = sl["cluster_name"].map(lambda c: JOB_FAMILY_ALIASES.get(c, c))
+    return {row.job_family: clean(row.value) for row in sl.itertuples()
+            if row.job_family != "not_classified"}
+
+
 def clean(v):
     """None if missing/NaN/inf, else a plain float/str safe for json.dump(allow_nan=False)."""
     if v is None:
@@ -121,6 +146,7 @@ def main():
 
     job_exposure = load_job_exposure()
     wage_data = load_wage_data()
+    major_group_aug_2025 = load_major_group_trend()
 
     months = sorted(set().union(*[set(df["date_start"].unique()) for df in slices.values()]))
     sources = list(FILES.keys())
@@ -170,6 +196,28 @@ def main():
             continue
         family = wage_data.loc[soc, "JobFamily"]
         family_members.setdefault(family, []).append(soc)
+
+    # major_group_trend: one real historical point (Aug 2025, major-group granularity)
+    # plus the two detailed months rolled up to the same granularity, so all three
+    # points are comparable. "pct" (USAGE_METRIC_ID) is documented as "Percentage of
+    # the geography's total in this category node" -- a share-of-total metric, so the
+    # correct rollup from detailed occupations to their shared major group is SUM, not
+    # an average/median (per release_2026_06_26/data_documentation.md and confirmed:
+    # detailed-occupation pct sums to ~98.5 across all occupations, same as Aug 2025's
+    # major-group pct summing to exactly 100). Never blended into per-occupation
+    # metrics -- surfaced only under this key.
+    major_group_trend = {}
+    for family, socs_in_family in family_members.items():
+        point = {}
+        if family in major_group_aug_2025:
+            point[MAJOR_GROUP_TREND_DATE] = major_group_aug_2025[family]
+        for month in months:
+            vals = [usage_pct(s, "claude_ai", month) for s in socs_in_family]
+            vals = [v for v in vals if v is not None]
+            if vals:
+                point[month] = clean(sum(vals))
+        if len(point) >= 2:
+            major_group_trend[family] = point
 
     for soc in all_socs:
         if soc not in wage_data.index:
@@ -250,6 +298,7 @@ def main():
         "sources": sources,
         "medians": medians,
         "occupations": occ_entries,
+        "major_group_trend": major_group_trend,
     }
 
     with open(OUT_DIR / "index.json", "w", encoding="utf-8") as f:

@@ -187,3 +187,44 @@
 - Neighbours pinned to source=claude_ai, month=2026-05-01 (plan did not specify one).
   Computed for 516 of 746 occupations; the rest lack a wage_data match, a pinned-month
   automation_pct, or no same-JobFamily lower-automation candidate within +-25% salary.
+
+## v0.2: major_group_trend addition (quarter/year comparison request)
+
+Investigated every other release under data/ for a real multi-point time series at
+occupation granularity (see agent findings, summarized here for the record):
+
+- release_2026_01_15, release_2026_03_24: single-week raw snapshots, zero occupation
+  facets at all (never SOC-enriched). Unusable.
+- release_2025_09_15: single week (2025-08-04/08-11), enriched output has a
+  soc_occupation facet but only at SOC-major-group granularity (23 groups, e.g.
+  "Computer and Mathematical"), one variable `soc_pct`. No automation/augmentation
+  split at the occupation level.
+- release_2025_02_10 / release_2025_03_27: static lookups, no date axis.
+
+Conclusion: no real quarterly/yearly series exists at the detailed-occupation level.
+Built `major_group_trend` in index.json instead: one extra real point (Aug 2025) at
+major-group granularity, plus the two detailed months rolled up to the same
+granularity for a fair comparison.
+
+Rollup bug caught before shipping: `pct` (USAGE_METRIC_ID) is documented as
+"Percentage of the geography's total in this category node" (release_2026_06_26
+data_documentation.md) -- a share-of-total metric. Detailed-occupation `pct` values
+sum to ~98.5 across all ~718-746 occupations (release's major-group `soc_pct` sums to
+exactly 100.0), confirming both are on the same share-of-total basis. The correct
+rollup from detailed occupations to their shared JobFamily is therefore SUM, not
+median/average -- an initial median-based version understated large families by ~2
+orders of magnitude and was corrected before commit.
+
+JobFamily name crosswalk: release_2025_09_15's cluster_name spells one SOC major
+group "Educational Instruction and Library" where wage_data.JobFamily (and every
+other source) spells it "Education, Training, and Library" -- same SOC 25-0000
+group, aliased explicitly in build_data.py's JOB_FAMILY_ALIASES. All other 21 major
+group names matched exactly across both sources.
+
+Caveat for the UI: the Aug-2025 point comes from a different report/enrichment
+pipeline (v3-era) than the Apr/May 2026 points (v6 release), so cross-release
+comparability isn't guaranteed even after fixing the aggregation math -- large swings
+(e.g. Computer and Mathematical: 35.9% -> 1.9%) are plausible given Claude's userbase
+broadened substantially over that period, but could also partly reflect methodology
+differences between report versions. Surfaced as its own panel, never blended into
+per-occupation metrics, with an explicit caveat in the UI.

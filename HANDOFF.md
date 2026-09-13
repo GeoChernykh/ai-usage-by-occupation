@@ -8,6 +8,28 @@ Verified end to end: page, `data/index.json`, and a sample `data/occ/<soc>.json`
 all return HTTP 200 and parse; deep link e.g.
 `?soc=15-1252` selects that occupation on load.
 
+## v0.2 (branch `v0.2`, not yet merged to `main`/live)
+
+User asked for quarter/year comparison instead of just Apr vs May. Investigated
+every other release under `data/`: none has a real multi-point time series at
+the detailed-occupation level (see `probe_results.md`, "v0.2: major_group_trend
+addition"). `release_2026_01_15`/`release_2026_03_24` have zero occupation
+facets; `release_2025_09_15` has one extra real point (Aug 2025) but only at
+SOC-major-group granularity (23 groups); older releases are static lookups
+with no date axis. Rather than fabricate quarters from two months of data,
+shipped:
+- The month/period toggle is now generated from `indexData.months` instead of
+  hardcoded HTML, so it already scales if a future release adds more
+  comparable months — no app.js change needed, just re-running
+  `build_data.py`.
+- A new "Usage trend by job family (coarse groups only)" panel using the one
+  real extra data point, rolled up correctly (the detailed months are summed,
+  not averaged, per occupation within a `JobFamily`, matching `pct`'s
+  documented share-of-total semantics — confirmed detailed `pct` sums to
+  ~98.5 across all occupations, same basis as the major-group `soc_pct`
+  summing to 100.0). Hidden when the occupation has no `wage_data` match.
+  Carries an explicit on-panel caveat about cross-release comparability.
+
 ## Source data
 
 | Source | Total rows | Slice rows (soc_occupation, hierarchy_level=0, geo_id=GLOBAL) |
