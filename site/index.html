@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Usage by Occupation</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+</head>
+<body>
+<header id="controls">
+  <h1>AI usage by occupation</h1>
+  <div class="control-row">
+    <input id="occ-search" type="text" list="occ-list" placeholder="Search occupation…" autocomplete="off">
+    <datalist id="occ-list"></datalist>
+    <div class="toggle-group" id="source-toggle">
+      <button data-source="claude_ai" class="toggle active">Consumer (Claude apps)</button>
+      <button data-source="1p_api" class="toggle">Enterprise API</button>
+    </div>
+    <div class="toggle-group" id="month-toggle">
+      <button data-month="2026-04-01" class="toggle">Apr</button>
+      <button data-month="2026-05-01" class="toggle active">May</button>
+    </div>
+  </div>
+</header>
+
+<main id="app">
+  <p id="empty-state">Pick an occupation to begin.</p>
+  <div id="panels" hidden>
+    <section id="kpi-row" class="panel"></section>
+
+    <section class="panel">
+      <h2>Time compression</h2>
+      <div id="time-compression"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Automation vs augmentation</h2>
+      <div id="auto-aug-chart"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Collaboration patterns</h2>
+      <div id="collab-chart"></div>
+    </section>
+
+    <section class="panel">
+      <h2>What AI actually produces for this job</h2>
+      <div id="artifact-chart"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Consumer vs enterprise</h2>
+      <div id="source-compare-chart"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Skill gap</h2>
+      <div id="skill-gap"></div>
+    </section>
+
+    <section class="panel" id="neighbours-panel" hidden>
+      <h2>Reskilling neighbours</h2>
+      <table id="neighbours-table">
+        <thead><tr><th>Title</th><th>Automation %</th><th>Median salary</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h2>Download</h2>
+      <button id="download-csv">Download this occupation's metrics (CSV)</button>
+    </section>
+  </div>
+</main>
+
+<footer>
+  Measures Claude usage among Claude users, mapped onto US O*NET/SOC classifications — not AI
+  exposure of an occupation in general. The Enterprise API source excludes Claude Code, which
+  understates developer occupations. Cells that did not meet publication thresholds are shown as
+  "not published", not as zero. Source: Anthropic Economic Index, release 2026-06-26, CC-BY.
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
