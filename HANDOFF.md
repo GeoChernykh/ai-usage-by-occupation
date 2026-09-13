@@ -30,6 +30,38 @@ shipped:
   summing to 100.0). Hidden when the occupation has no `wage_data` match.
   Carries an explicit on-panel caveat about cross-release comparability.
 
+### Global trends (new "Trends" tab, all six releases)
+
+User then asked what real trends *all* the data supports, not just occupation
+level. Found and built three genuinely comparable GLOBAL (non-occupation)
+metric families — a new tab, independent of the occupation picker:
+
+1. **Automation vs augmentation**, 7 points, Feb 2025 → May 2026. Derived via
+   a documented, verified-exact formula (automation% = (directive +
+   feedback_loop) / (100 − none) × 100) for the two report-era CSVs and the
+   two 2026 raw weekly snapshots that only ship the raw components. Feb 2025
+   (V1) is flagged `unnormalized: true` — its six components sum to 84%, not
+   ~100% like every later snapshot, for an undocumented reason — and shown
+   unscaled rather than guessed-and-rescaled.
+2. **Top O\*NET tasks**, up to 6 points each, same 6 real dates. Task text
+   confirmed verbatim-stable across every release. Caveat shown on-panel:
+   each release re-clusters into a different total task-bucket count
+   (2,713–5,236), so a task's share can shift partly from re-bucketing, not
+   only real usage change.
+3. **Usage patterns** (use_case mix, task success, AI autonomy, human-only/
+   with-AI time, human-only ability, multitasking) — 2–3 points each
+   (Nov 2025 → May 2026; most of these don't exist before the 2026 weekly
+   snapshots).
+
+Explicitly not built: request/topic-level trends over time — verified each
+release reruns its own clustering with a non-overlapping label taxonomy, so
+comparing "top topics" across releases would compare incompatible categories.
+
+Performance note: the two 2026 weekly raw files are ~100 MB each; refactored
+from ~10 full-file re-reads per file down to one chunked pass
+(`load_weekly_slice`) with everything else operating in-memory. Full
+`build_data.py` run: ~14.5s.
+
 ## Source data
 
 | Source | Total rows | Slice rows (soc_occupation, hierarchy_level=0, geo_id=GLOBAL) |

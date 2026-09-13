@@ -11,7 +11,11 @@
 <body>
 <header id="controls">
   <h1>AI usage by occupation</h1>
-  <div class="control-row">
+  <div class="toggle-group" id="view-toggle">
+    <button data-view="occupation" class="toggle active">By occupation</button>
+    <button data-view="trends" class="toggle">Trends (all releases)</button>
+  </div>
+  <div class="control-row" id="occupation-controls">
     <input id="occ-search" type="text" list="occ-list" placeholder="Search occupation…" autocomplete="off">
     <datalist id="occ-list"></datalist>
     <div class="toggle-group" id="source-toggle">
@@ -23,6 +27,7 @@
 </header>
 
 <main id="app">
+  <div id="occupation-view">
   <p id="empty-state">Pick an occupation to begin.</p>
   <div id="panels" hidden>
     <section id="kpi-row" class="panel"></section>
@@ -79,6 +84,46 @@
     <section class="panel">
       <h2>Download</h2>
       <button id="download-csv">Download this occupation's metrics (CSV)</button>
+    </section>
+  </div>
+  </div>
+
+  <div id="trends-view" hidden>
+    <p class="panel-caveat">
+      Occupation-level detail exists only for Apr/May 2026. These three charts use
+      GLOBAL (not per-occupation) metrics that genuinely exist across multiple
+      releases — verified point by point, not assumed from matching column names.
+    </p>
+
+    <section class="panel">
+      <h2>Automation vs augmentation, Feb 2025 – May 2026</h2>
+      <p class="panel-caveat">
+        The Feb 2025 point (V1 report) is flagged separately — its six components sum
+        to only 84% rather than ~100% like every later snapshot, an unexplained
+        denominator difference, so it is shown unnormalized rather than rescaled.
+      </p>
+      <div id="automation-trend-chart"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Top O*NET tasks by usage share, Feb 2025 – May 2026</h2>
+      <p class="panel-caveat">
+        Same task text confirmed stable across releases, but each release
+        independently re-clusters into a different total number of task buckets
+        (2,713 to 5,236) — large swings for one task may partly reflect
+        re-bucketing, not only real usage change.
+      </p>
+      <div id="task-trend-chart"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Usage patterns over time</h2>
+      <p class="panel-caveat">
+        Most metrics here span only Nov 2025 – May 2026 (the two 2026 weekly
+        snapshots plus this release); earlier reports don't publish these at all.
+      </p>
+      <div id="usage-pattern-select"></div>
+      <div id="usage-pattern-chart"></div>
     </section>
   </div>
 </main>

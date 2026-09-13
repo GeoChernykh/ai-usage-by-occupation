@@ -21,6 +21,33 @@ Source schema notes (see probe_results.md for the full probe):
   to the same major-group granularity (median of "pct" across occupations sharing a
   JobFamily) so all three points are on the same footing, and expose it as its own
   index.json block, never blended into per-occupation metrics.
+- global_trends: none of the six releases has multi-point occupation-level data, but
+  three families of GLOBAL (non-occupation) metrics genuinely are comparable across
+  releases (verified numerically, not assumed from column names -- see
+  probe_results.md "v0.2: global_trends"):
+  1. automation_pct/augmentation_pct: documented formula in this release's own
+     data_documentation.md is automation% = (directive+feedback_loop)/(100-none)*100,
+     augmentation% = (task_iteration+learning+validation)/(100-none)*100. Verified
+     exact against this release's own precomputed collaboration_bucket_*_pct. Applied
+     to the two 2025 report CSVs and the two 2026 raw weekly snapshots, which only
+     ship the six raw components. release_2025_02_10's V1 snapshot sums to only
+     84.2% (not ~100% like every later snapshot) for an undocumented reason -- kept
+     UNNORMALIZED with an explicit "unnormalized" flag rather than dividing by a
+     denominator we can't verify.
+  2. top_onet_tasks: onet_task node/cluster text is verbatim O*NET task-statement
+     text, confirmed byte-identical for the same task across every release checked.
+     Matched case-insensitively (2026_06_26 title-cases the text, earlier releases
+     don't) across all 6 real time points for the top tasks by May-2026 share.
+  3. usage_patterns: use_case_{work,personal,coursework}_pct, ai_autonomy_mean,
+     human_only_time_mean, human_with_ai_time_mean, human_only_ability_pct,
+     multitasking_pct exist at GLOBAL/level-0 in the two 2026 raw weekly files under
+     the same variable names as this release's metric_ids (3 points: Nov 2025,
+     Feb 2026, Apr/May 2026). task_success_pct exists in the weekly files but nowhere
+     in this release, so it only gets 2 points (Nov 2025, Feb 2026).
+  Explicitly NOT built: request/topic-level trends -- verified each release reruns
+  its own clustering with a fresh, non-overlapping label taxonomy (different wording
+  per release, short phrases only in this release), so a "topic over time" chart
+  would compare incompatible categories under a false appearance of continuity.
 """
 import json
 import math
@@ -40,6 +67,36 @@ MAJOR_GROUP_TREND_PATH = ("data/release_2025_09_15/data/output/"
 MAJOR_GROUP_TREND_DATE = "2025-08-01"
 # release_2025_09_15 spells this SOC major group differently from wage_data.JobFamily.
 JOB_FAMILY_ALIASES = {"Educational Instruction and Library": "Education, Training, and Library"}
+
+V1_AUTOMATION_PATH = "data/release_2025_02_10/automation_vs_augmentation.csv"
+V1_DATE = "2025-02-10"
+V2_AUTOMATION_PATH = "data/release_2025_03_27/automation_vs_augmentation_v2.csv"
+V2_DATE = "2025-03-27"
+V1_TASK_PATH = "data/release_2025_02_10/onet_task_mappings.csv"
+V2_TASK_PATH = "data/release_2025_03_27/task_pct_v2.csv"
+AUG_2025_ENRICHED_PATH = MAJOR_GROUP_TREND_PATH  # same file as major_group_trend
+AUG_2025_DATE = "2025-08-04"
+NOV_2025_PATH = "data/release_2026_01_15/data/intermediate/aei_raw_claude_ai_2025-11-13_to_2025-11-20.csv"
+NOV_2025_DATE = "2025-11-13"
+FEB_2026_PATH = "data/release_2026_03_24/data/aei_raw_claude_ai_2026-02-05_to_2026-02-12.csv"
+FEB_2026_DATE = "2026-02-05"
+
+POINT_LABELS = {
+    V1_DATE: "Feb 2025 (V1 report)",
+    V2_DATE: "Mar 2025 (V2 report)",
+    AUG_2025_DATE: "Aug 2025 (V3 report)",
+    NOV_2025_DATE: "Nov 2025",
+    FEB_2026_DATE: "Feb 2026",
+    "2026-04-01": "Apr 2026",
+    "2026-05-01": "May 2026",
+}
+
+TOP_TASK_COUNT = 6
+NOT_A_TASK = {"none", "not_classified"}
+
+
+def norm_task(text):
+    return text.strip().lower()
 
 COLS = ["node_name", "node_external_id", "metric_id", "date_start", "value",
         "category_name", "hierarchy_level", "geo_id"]
@@ -72,6 +129,22 @@ def extract(path):
     df = df.dropna(subset=["value"])
     df["soc"] = df["node_external_id"].map(norm_soc)
     return df
+
+
+def extract_category(path, category_name, hierarchy_level=None, metric_id=None):
+    """GLOBAL-only rows for one category_name from the main release, chunked."""
+    parts = []
+    for chunk in pd.read_csv(path, usecols=COLS, dtype=str, chunksize=CHUNKSIZE):
+        mask = (chunk["category_name"] == category_name) & (chunk["geo_id"] == "GLOBAL")
+        if hierarchy_level is not None:
+            mask &= chunk["hierarchy_level"] == hierarchy_level
+        if metric_id is not None:
+            mask &= chunk["metric_id"] == metric_id
+        parts.append(chunk.loc[mask, KEEP])
+    parts = [p for p in parts if not p.empty]
+    df = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame(columns=KEEP)
+    df["value"] = pd.to_numeric(df["value"], errors="coerce")
+    return df.dropna(subset=["value"])
 
 
 def load_job_exposure():
@@ -134,6 +207,202 @@ def wage_block(row):
     return block
 
 
+def automation_from_components(directive, feedback_loop, task_iteration, learning,
+                                validation, none, normalize=True):
+    automation_raw = directive + feedback_loop
+    augmentation_raw = task_iteration + learning + validation
+    if not normalize:
+        return automation_raw, augmentation_raw
+    classifiable = 100.0 - none
+    return automation_raw / classifiable * 100.0, augmentation_raw / classifiable * 100.0
+
+
+def read_v1_v2_automation(path):
+    df = pd.read_csv(path, dtype=str)
+    df["pct"] = pd.to_numeric(df["pct"], errors="coerce")
+    vals = df.set_index("interaction_type")["pct"]
+    return {k: float(vals.get(k, 0.0)) for k in
+            ("directive", "feedback loop", "task iteration", "learning", "validation", "none")}
+
+
+WEEKLY_COLS = ["facet", "level", "geo_id", "variable", "cluster_name", "value"]
+WEEKLY_FACETS_NEEDED = {"collaboration", "collaboration_automation_augmentation", "onet_task",
+                         "use_case", "ai_autonomy", "human_only_time", "human_with_ai_time",
+                         "human_only_ability", "multitasking", "task_success"}
+
+
+def load_weekly_slice(path):
+    """One chunked pass over a ~100MB weekly aei_raw_*.csv, keeping only the GLOBAL rows
+    for the facets this build needs -- every other read below operates on this in-memory
+    slice instead of re-reading the file from disk."""
+    parts = []
+    for chunk in pd.read_csv(path, usecols=WEEKLY_COLS, dtype=str, chunksize=CHUNKSIZE):
+        mask = (chunk["geo_id"] == "GLOBAL") & (chunk["facet"].isin(WEEKLY_FACETS_NEEDED))
+        parts.append(chunk.loc[mask])
+    parts = [p for p in parts if not p.empty]
+    df = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame(columns=WEEKLY_COLS)
+    df["value"] = pd.to_numeric(df["value"], errors="coerce")
+    return df
+
+
+def read_weekly_collaboration(slice_df):
+    """Raw collaboration_pct components at GLOBAL/level 0."""
+    sl = slice_df[(slice_df["facet"] == "collaboration") & (slice_df["level"] == "0")
+                  & (slice_df["variable"] == "collaboration_pct")]
+    vals = sl.set_index("cluster_name")["value"]
+    return {
+        "directive": float(vals.get("directive", 0.0)),
+        "feedback loop": float(vals.get("feedback_loop", 0.0)),
+        "task iteration": float(vals.get("task_iteration", 0.0)),
+        "learning": float(vals.get("learning", 0.0)),
+        "validation": float(vals.get("validation", 0.0)),
+        "none": float(vals.get("none", 0.0)),
+    }
+
+
+def read_weekly_global_metric(slice_df, facet, variable, cluster_name=None):
+    mask = (slice_df["facet"] == facet) & (slice_df["level"] == "0") & (slice_df["variable"] == variable)
+    if cluster_name is not None:
+        mask &= slice_df["cluster_name"] == cluster_name
+    sl = slice_df.loc[mask, "value"]
+    if sl.empty:
+        return None
+    return clean(sl.iloc[0])
+
+
+def read_weekly_onet_tasks(slice_df):
+    """{normalized task text: pct} at GLOBAL/level 0."""
+    sl = slice_df[(slice_df["facet"] == "onet_task") & (slice_df["level"] == "0")
+                  & (slice_df["variable"] == "onet_task_pct")]
+    out = {}
+    for cluster_name, value in zip(sl["cluster_name"], sl["value"]):
+        if cluster_name in NOT_A_TASK:
+            continue
+        v = clean(value)
+        if v is not None:
+            out[norm_task(cluster_name)] = v
+    return out
+
+
+def read_report_csv_tasks(path):
+    df = pd.read_csv(path, dtype=str)
+    df["pct"] = pd.to_numeric(df["pct"], errors="coerce")
+    return {norm_task(t): float(p) for t, p in zip(df["task_name"], df["pct"]) if pd.notna(p)}
+
+
+def overall_metric(overall_df, date_start, metric_id):
+    row = overall_df[(overall_df["date_start"] == date_start) & (overall_df["metric_id"] == metric_id)]
+    if row.empty:
+        return None
+    return clean(row["value"].iloc[0])
+
+
+def build_global_trends(overall_df, onet_task_df):
+    aug2025_slice = load_weekly_slice(AUG_2025_ENRICHED_PATH)
+    nov2025_slice = load_weekly_slice(NOV_2025_PATH)
+    feb2026_slice = load_weekly_slice(FEB_2026_PATH)
+
+    # 1. automation vs augmentation, 7 points.
+    v1 = read_v1_v2_automation(V1_AUTOMATION_PATH)
+    v1_auto, v1_aug = automation_from_components(v1["directive"], v1["feedback loop"], v1["task iteration"],
+                                                  v1["learning"], v1["validation"], v1["none"], normalize=False)
+    v2 = read_v1_v2_automation(V2_AUTOMATION_PATH)
+    v2_auto, v2_aug = automation_from_components(v2["directive"], v2["feedback loop"], v2["task iteration"],
+                                                  v2["learning"], v2["validation"], v2["none"])
+    aug2025_auto = read_weekly_global_metric(aug2025_slice, "collaboration_automation_augmentation",
+                                              "automation_pct", "automation")
+    aug2025_aug = read_weekly_global_metric(aug2025_slice, "collaboration_automation_augmentation",
+                                             "augmentation_pct", "augmentation")
+    nov2025 = read_weekly_collaboration(nov2025_slice)
+    nov2025_auto, nov2025_aug = automation_from_components(nov2025["directive"], nov2025["feedback loop"],
+                                                            nov2025["task iteration"], nov2025["learning"],
+                                                            nov2025["validation"], nov2025["none"])
+    feb2026 = read_weekly_collaboration(feb2026_slice)
+    feb2026_auto, feb2026_aug = automation_from_components(feb2026["directive"], feb2026["feedback loop"],
+                                                            feb2026["task iteration"], feb2026["learning"],
+                                                            feb2026["validation"], feb2026["none"])
+
+    automation_augmentation = [
+        {"date": V1_DATE, "label": POINT_LABELS[V1_DATE], "source_release": "release_2025_02_10",
+         "automation_pct": clean(v1_auto), "augmentation_pct": clean(v1_aug), "unnormalized": True},
+        {"date": V2_DATE, "label": POINT_LABELS[V2_DATE], "source_release": "release_2025_03_27",
+         "automation_pct": clean(v2_auto), "augmentation_pct": clean(v2_aug)},
+        {"date": AUG_2025_DATE, "label": POINT_LABELS[AUG_2025_DATE], "source_release": "release_2025_09_15",
+         "automation_pct": aug2025_auto, "augmentation_pct": aug2025_aug},
+        {"date": NOV_2025_DATE, "label": POINT_LABELS[NOV_2025_DATE], "source_release": "release_2026_01_15",
+         "automation_pct": clean(nov2025_auto), "augmentation_pct": clean(nov2025_aug)},
+        {"date": FEB_2026_DATE, "label": POINT_LABELS[FEB_2026_DATE], "source_release": "release_2026_03_24",
+         "automation_pct": clean(feb2026_auto), "augmentation_pct": clean(feb2026_aug)},
+    ]
+    for month in ("2026-04-01", "2026-05-01"):
+        automation_augmentation.append({
+            "date": month, "label": POINT_LABELS[month], "source_release": "release_2026_06_26",
+            "automation_pct": overall_metric(overall_df, month, "collaboration_bucket_automation_pct"),
+            "augmentation_pct": overall_metric(overall_df, month, "collaboration_bucket_augmentation_pct"),
+        })
+
+    # 2. usage patterns, 2-3 points each (only the two 2026 weekly snapshots + this release).
+    nov2025_success = read_weekly_global_metric(nov2025_slice, "task_success", "task_success_pct", "yes")
+    feb2026_success = read_weekly_global_metric(feb2026_slice, "task_success", "task_success_pct", "yes")
+    usage_metric_ids = ["use_case_work_pct", "use_case_personal_pct", "use_case_coursework_pct",
+                         "ai_autonomy_mean", "human_only_time_mean", "human_with_ai_time_mean",
+                         "human_only_ability_pct", "multitasking_pct"]
+    weekly_facet_variable = {
+        "use_case_work_pct": ("use_case", "use_case_pct", "work"),
+        "use_case_personal_pct": ("use_case", "use_case_pct", "personal"),
+        "use_case_coursework_pct": ("use_case", "use_case_pct", "coursework"),
+        "ai_autonomy_mean": ("ai_autonomy", "ai_autonomy_mean", None),
+        "human_only_time_mean": ("human_only_time", "human_only_time_mean", None),
+        "human_with_ai_time_mean": ("human_with_ai_time", "human_with_ai_time_mean", None),
+        "human_only_ability_pct": ("human_only_ability", "human_only_ability_pct", "yes"),
+        "multitasking_pct": ("multitasking", "multitasking_pct", "yes"),
+    }
+    task_success_points = {NOV_2025_DATE: nov2025_success, FEB_2026_DATE: feb2026_success}
+    usage_patterns = {"task_success_pct": {k: v for k, v in task_success_points.items() if v is not None}}
+    for metric_id in usage_metric_ids:
+        facet, variable, cluster = weekly_facet_variable[metric_id]
+        points = {
+            NOV_2025_DATE: read_weekly_global_metric(nov2025_slice, facet, variable, cluster),
+            FEB_2026_DATE: read_weekly_global_metric(feb2026_slice, facet, variable, cluster),
+        }
+        for month in ("2026-04-01", "2026-05-01"):
+            points[month] = overall_metric(overall_df, month, metric_id)
+        usage_patterns[metric_id] = {k: v for k, v in points.items() if v is not None}
+
+    # 3. top O*NET tasks, up to 6 points each.
+    v1_tasks = read_report_csv_tasks(V1_TASK_PATH)
+    v2_tasks = read_report_csv_tasks(V2_TASK_PATH)
+    aug2025_tasks = read_weekly_onet_tasks(aug2025_slice)
+    nov2025_tasks = read_weekly_onet_tasks(nov2025_slice)
+    feb2026_tasks = read_weekly_onet_tasks(feb2026_slice)
+
+    latest = onet_task_df[onet_task_df["date_start"] == "2026-05-01"].nlargest(TOP_TASK_COUNT, "value")
+    top_tasks = []
+    for _, row in latest.iterrows():
+        key = norm_task(row["node_name"])
+        points = {}
+        if key in v1_tasks:
+            points[V1_DATE] = v1_tasks[key]
+        if key in v2_tasks:
+            points[V2_DATE] = v2_tasks[key]
+        if key in aug2025_tasks:
+            points[AUG_2025_DATE] = aug2025_tasks[key]
+        if key in nov2025_tasks:
+            points[NOV_2025_DATE] = nov2025_tasks[key]
+        if key in feb2026_tasks:
+            points[FEB_2026_DATE] = feb2026_tasks[key]
+        for _, r2 in onet_task_df[onet_task_df["node_name"] == row["node_name"]].iterrows():
+            points[r2["date_start"]] = clean(r2["value"])
+        top_tasks.append({"task": row["node_name"], "points": points})
+
+    return {
+        "automation_augmentation": automation_augmentation,
+        "usage_patterns": usage_patterns,
+        "top_onet_tasks": top_tasks,
+        "point_labels": POINT_LABELS,
+    }
+
+
 def main():
     OCC_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -147,6 +416,9 @@ def main():
     job_exposure = load_job_exposure()
     wage_data = load_wage_data()
     major_group_aug_2025 = load_major_group_trend()
+    overall_df = extract_category(FILES["claude_ai"], "overall")
+    onet_task_df = extract_category(FILES["claude_ai"], "onet", hierarchy_level="0", metric_id="pct")
+    global_trends = build_global_trends(overall_df, onet_task_df)
 
     months = sorted(set().union(*[set(df["date_start"].unique()) for df in slices.values()]))
     sources = list(FILES.keys())
@@ -299,6 +571,7 @@ def main():
         "medians": medians,
         "occupations": occ_entries,
         "major_group_trend": major_group_trend,
+        "global_trends": global_trends,
     }
 
     with open(OUT_DIR / "index.json", "w", encoding="utf-8") as f:

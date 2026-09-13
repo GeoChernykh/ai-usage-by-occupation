@@ -22,3 +22,9 @@ occupation_count: 746
 files_written: 747
 total_output_bytes: 5863299
 neighbours_computed_for: 516 occupations (pinned source=claude_ai, month=2026-05-01)
+source_rows: {'claude_ai': 1636573, '1p_api': 491705}
+slice_rows: {'claude_ai': 72107, '1p_api': 68532}
+occupation_count: 746
+files_written: 747
+total_output_bytes: 5867801
+neighbours_computed_for: 516 occupations (pinned source=claude_ai, month=2026-05-01)

@@ -367,7 +367,106 @@ function downloadCsv() {
   URL.revokeObjectURL(url);
 }
 
+const USAGE_PATTERN_LABELS = {
+  use_case_work_pct: "Work use case %",
+  use_case_personal_pct: "Personal use case %",
+  use_case_coursework_pct: "Coursework use case %",
+  task_success_pct: "Task success %",
+  ai_autonomy_mean: "AI autonomy (mean)",
+  human_only_time_mean: "Human-only time (minutes, mean)",
+  human_with_ai_time_mean: "Time with AI (minutes, mean)",
+  human_only_ability_pct: "Human-only ability %",
+  multitasking_pct: "Multitasking %",
+};
+
+function trendPointLabels(dates) {
+  const labels = indexData.global_trends.point_labels;
+  return dates.map((d) => labels[d] || d);
+}
+
+function renderAutomationTrend() {
+  const points = indexData.global_trends.automation_augmentation;
+  const dates = points.map((p) => p.date);
+  const div = document.getElementById("automation-trend-chart");
+  div.innerHTML = "";
+  Plotly.newPlot(div, [
+    {
+      type: "scatter", mode: "lines+markers", name: "Automation %",
+      x: trendPointLabels(dates), y: points.map((p) => p.automation_pct),
+      marker: { color: points.map((p) => (p.unnormalized ? "#ff7b72" : "#7aa2f7")), size: 9 },
+      line: { color: "#7aa2f7" },
+    },
+    {
+      type: "scatter", mode: "lines+markers", name: "Augmentation %",
+      x: trendPointLabels(dates), y: points.map((p) => p.augmentation_pct),
+      marker: { color: "#a5d6ff", size: 9 }, line: { color: "#a5d6ff" },
+    },
+  ], baseLayout({ yaxis: { title: "%" }, height: 280, showlegend: true, margin: { l: 50, r: 20, t: 10, b: 80 } }), PLOTLY_CONFIG);
+}
+
+function renderTaskTrend() {
+  const tasks = indexData.global_trends.top_onet_tasks;
+  const allDates = Object.keys(indexData.global_trends.point_labels);
+  const div = document.getElementById("task-trend-chart");
+  div.innerHTML = "";
+  const traces = tasks.map((t) => ({
+    type: "scatter", mode: "lines+markers",
+    name: t.task.length > 40 ? t.task.slice(0, 40) + "…" : t.task,
+    x: trendPointLabels(allDates.filter((d) => d in t.points)),
+    y: allDates.filter((d) => d in t.points).map((d) => t.points[d]),
+  }));
+  Plotly.newPlot(div, traces, baseLayout({ yaxis: { title: "% share" }, height: 320, showlegend: true, margin: { l: 50, r: 20, t: 10, b: 80 } }), PLOTLY_CONFIG);
+}
+
+function renderUsagePatternChart() {
+  const select = document.getElementById("usage-pattern-select-input");
+  const metricId = select.value;
+  const points = indexData.global_trends.usage_patterns[metricId];
+  const dates = Object.keys(points).sort();
+  const div = document.getElementById("usage-pattern-chart");
+  div.innerHTML = "";
+  Plotly.newPlot(div, [{
+    type: "scatter", mode: "lines+markers",
+    x: trendPointLabels(dates), y: dates.map((d) => points[d]),
+    marker: { color: "#7aa2f7" }, line: { color: "#7aa2f7" },
+  }], baseLayout({ height: 240, margin: { l: 50, r: 20, t: 10, b: 60 } }), PLOTLY_CONFIG);
+}
+
+function populateUsagePatternSelect() {
+  const container = document.getElementById("usage-pattern-select");
+  if (container.querySelector("select")) return;
+  const select = document.createElement("select");
+  select.id = "usage-pattern-select-input";
+  for (const metricId of Object.keys(indexData.global_trends.usage_patterns)) {
+    const opt = document.createElement("option");
+    opt.value = metricId;
+    opt.textContent = USAGE_PATTERN_LABELS[metricId] || metricId;
+    select.appendChild(opt);
+  }
+  select.addEventListener("change", renderUsagePatternChart);
+  container.appendChild(select);
+}
+
+function renderGlobalTrends() {
+  populateUsagePatternSelect();
+  renderAutomationTrend();
+  renderTaskTrend();
+  renderUsagePatternChart();
+}
+
 function wireControls() {
+  document.getElementById("view-toggle").addEventListener("click", (e) => {
+    const btn = e.target.closest(".toggle");
+    if (!btn) return;
+    document.querySelectorAll("#view-toggle .toggle").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    const isTrends = btn.dataset.view === "trends";
+    document.getElementById("occupation-controls").hidden = isTrends;
+    document.getElementById("occupation-view").hidden = isTrends;
+    document.getElementById("trends-view").hidden = !isTrends;
+    if (isTrends) renderGlobalTrends();
+  });
+
   document.querySelectorAll("#source-toggle .toggle").forEach((btn) => {
     btn.addEventListener("click", () => {
       document.querySelectorAll("#source-toggle .toggle").forEach((b) => b.classList.remove("active"));

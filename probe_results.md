@@ -228,3 +228,55 @@ comparability isn't guaranteed even after fixing the aggregation math -- large s
 broadened substantially over that period, but could also partly reflect methodology
 differences between report versions. Surfaced as its own panel, never blended into
 per-occupation metrics, with an explicit caveat in the UI.
+
+## v0.2: global_trends addition (macro trends across all releases, per user request)
+
+Investigated whether ANY global (non-occupation) metrics are genuinely comparable
+across all six releases (Explore-agent survey + manual verification). Three real
+trend families found, built into index.json.global_trends:
+
+1. **automation_augmentation** (7 points, Feb 2025 - May 2026). Formula confirmed
+   exact against release_2026_06_26's own precomputed collaboration_bucket_*_pct:
+   automation% = (directive+feedback_loop)/(100-none)*100, augmentation% =
+   (task_iteration+learning+validation)/(100-none)*100. Applied to
+   automation_vs_augmentation.csv (2025_02_10, "V1"), automation_vs_augmentation_v2.csv
+   (2025_03_27, "V2"), release_2025_09_15's own precomputed
+   facet=collaboration_automation_augmentation (Aug 2025, "V3"), and derived from the
+   raw six collaboration_pct components in the release_2026_01_15/release_2026_03_24
+   weekly snapshots (Nov 2025 / Feb 2026). V1's six raw values sum to only 84.2% (every
+   later snapshot sums to ~100%) for an undocumented reason -- V1 is flagged
+   `"unnormalized": true` and left un-normalized rather than dividing by a denominator
+   we can't verify.
+2. **usage_patterns**: use_case_{work,personal,coursework}_pct, ai_autonomy_mean,
+   human_only_time_mean, human_with_ai_time_mean, human_only_ability_pct,
+   multitasking_pct -- same variable names in the two 2026 weekly raw files
+   (facet=use_case/ai_autonomy/human_only_time/human_with_ai_time/human_only_ability/
+   multitasking, level=0, geo_id=GLOBAL) as this release's metric_ids under
+   category_name=overall. 3 points (Nov 2025, Feb 2026, Apr/May 2026).
+   task_success_pct exists only in the two weekly files (facet=task_success,
+   cluster_name=yes) -- absent everywhere in release_2026_06_26 -- so it only gets
+   2 points (Nov 2025, Feb 2026).
+3. **top_onet_tasks** (top 6 by May-2026 share, up to 6 points each spanning Feb 2025
+   - May 2026). onet_task node/cluster text is verbatim O*NET task-statement text,
+   matched case-insensitively (release_2026_06_26 title-cases it, earlier releases
+   don't). CAVEAT recorded here and surfaced in the UI: each release independently
+   re-clusters requests into O*NET tasks with a different total bucket count
+   (release_2026_06_26: 2,713 tasks summing to 94.3%; other releases: 3,170-5,236
+   tasks summing to ~100%) -- a task's raw share can shift partly because of
+   re-bucketing, not only real usage change. Some top tasks show large swings (e.g.
+   "Search electronic sources..." 0.03% -> 4.95%) that are plausible given Claude's
+   userbase broadened substantially over this period (consistent with the
+   major_group_trend finding of Computer/Math share dropping 35.9% -> 1.9%), but
+   should be read as directional, not precise.
+
+Performance note: release_2026_01_15 and release_2026_03_24's raw weekly files are
+~94-103 MB each. An earlier draft called pd.read_csv on them once per metric (~10
+full-file re-reads per file); refactored to one chunked pass per file
+(load_weekly_slice), filtering to geo_id=GLOBAL and the facets this build needs, with
+every subsequent lookup operating in-memory. Full build_data.py run: 14.5s.
+
+Explicitly NOT built: request/topic-level trends. Verified each release reruns its
+own clustering with a fresh, non-overlapping label taxonomy (full-sentence labels,
+differently worded, in three releases; short 2-4 word phrases only in
+release_2026_06_26) -- would compare incompatible categories under a false
+appearance of continuity.
