@@ -30,6 +30,14 @@ const check = (ok, msg) => { console.log((ok ? '  ok   ' : '  FAIL ') + msg); if
   check(/9\.12 h/.test(hero) && /52\.4 min/.test(hero), 'hero reads 9.12 h -> 52.4 min: ' + hero.replace(/\s+/g, ' ').trim());
   check((await page.textContent('.hero .factor')).includes('10.5'), '10.5x factor');
   check(await page.locator('#taskCard tbody tr').count() === 11, '11 task rows');
+  check((await page.textContent('#taskCard .cap')).includes('11 of 17'),
+    'caption reads 11 of 17 published');
+  const spark = await page.evaluate(() => {
+    const el = document.querySelector('[data-spark="pct"]');
+    const c = echarts.getInstanceByDom(el);
+    return c ? c.getOption().series[0].data.length : 0;
+  });
+  check(spark === 7, 'usage-share sparkline drew ' + spark + ' points');
 
   await go('?occ=15-1299.03');
   hero = await page.textContent('.hero-sentence');

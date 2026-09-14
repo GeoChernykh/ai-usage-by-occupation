@@ -36,6 +36,9 @@ Deviations from `PLAN.md`, gate results, and anything that turned out to differ 
 - **`build_series.py` checks the ~100 sum on the weekly files only.** The current release publishes
   only nodes that met its thresholds, so its task shares sum to 88.4 (April) and 94.3 (May) by
   design — §1.4 gives the same 94.32 figure.
+- **`uitest.js` is committed although §10's file list does not name it.** It is the headless
+  acceptance harness for the three screens; it needs Node and a Playwright Chromium build, is never
+  served, and the Pages workflow ignores everything outside `site/`.
 - **The subregion table lists ISO 3166-2 codes, not oblast names.** The release publishes no name
   for a subregion node and no local crosswalk exists; `UA-30` is Kyiv city.
 

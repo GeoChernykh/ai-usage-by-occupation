@@ -38,8 +38,10 @@ as specified.
 | Cross-release text join | 17,139 unambiguous O\*NET texts; 67.1–90.8 pp matched per release |
 | Runtime | `build_data.py` ~7 s, `build_series.py` ~40 s |
 
-Payload: `site/data` 11.9 MB on disk across 752 files (746 occupation files plus five payloads and
-`world.geojson`); the JSON itself is 9.49 MB, and `site/vendor/echarts.min.js` adds 1.0 MB.
+Payload: **9.49 MB** across 752 files — 746 occupation files plus five payloads and
+`world.geojson`. That is the byte total GATE 2 measures, against a 12 MB ceiling. `du` reports
+11.9 MB for the same directory; the difference is block allocation over 746 small files, not
+content. `site/vendor/echarts.min.js` adds 1.0 MB outside `site/data`.
 
 `verify_data.py` passes every GATE 2 assertion, including all nine §1.4 occupation fixtures with
 their task counts, the seven §1.5 country figures, and the Ukrainian subregion totals.
