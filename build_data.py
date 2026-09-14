@@ -153,8 +153,9 @@ def main():
     # --- task -> occupation join, by O*NET Task ID (PLAN section 1.6) ---
     st = pd.read_csv(os.path.join(ROOT, "lookups", "onet30_task_statements.txt"),
                      sep="\t", dtype=str)
-    by_id = dict(zip(st["Task ID"].str.strip(),
-                     st["O*NET-SOC Code"].str.strip().map(norm_soc)))
+    st["soc"] = st["O*NET-SOC Code"].str.strip().map(norm_soc)
+    by_id = dict(zip(st["Task ID"].str.strip(), st["soc"]))
+    onet_totals = st.groupby("soc").size().to_dict()   # tasks O*NET lists per occupation
     task["soc"] = task["node_external_id"].str.strip().map(by_id)
     hit = task["soc"].notna().mean()
     log(f"task join hit rate: {hit:.1%}")
@@ -260,7 +261,8 @@ def main():
                     row = blob(occ_w.loc[(source, latest, soc)])
         row = row or {}
         entry = {"soc": soc, "title": titles.get(soc, soc), "mg": soc[:2],
-                 "n_tasks": len(tasks_by_soc.get(soc, [])), "src": srcs}
+                 "n_tasks": len(tasks_by_soc.get(soc, [])),
+                 "n_onet": int(onet_totals.get(soc, 0)), "src": srcs}
         for key, metric in [("pct", "pct"), ("h_only", "human_only_time_mean"),
                             ("h_ai", "human_with_ai_time_mean"),
                             ("autonomy", "ai_autonomy_mean"),

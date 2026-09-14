@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Time Machine</title>
+<meta name="description" content="How long the work Claude is asked to do takes with and without Claude, by occupation, task and country.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="rail" id="rail" aria-label="Screens"></nav>
+<div class="app">
+  <div class="slab">
+    <div class="head">
+      <h1 id="title">AI Time Machine</h1>
+      <div class="controls">
+        <div class="seg" id="monthSeg" role="group" aria-label="Month"></div>
+        <div class="seg small" id="sourceSeg" role="group" aria-label="Data source"></div>
+        <button class="seg-export" id="exportBtn" hidden></button>
+      </div>
+    </div>
+    <main id="screen"></main>
+  </div>
+  <footer>
+    Measures Claude usage among Claude users, mapped onto US O*NET/SOC classifications &mdash; not AI
+    exposure of an occupation in general. Shares are shares <b>of Claude usage</b>, never of the
+    economy. The Enterprise API source excludes Claude Code, which understates developer
+    occupations, and is published globally only. Cells that did not meet Anthropic's publication
+    thresholds are shown as &ldquo;not published&rdquo;, not as zero. Time figures are model estimates, not
+    stopwatch measurements. Releases are discrete published snapshots, not a continuous time
+    series.<br>
+    Sources: Anthropic Economic Index, release 2026-06-26 (CC BY); O*NET 30.0 Database, U.S.
+    Department of Labor / ETA (CC BY 4.0); country outlines from Natural Earth (public domain).
+  </footer>
+</div>
+<div class="pop" id="pop" hidden></div>
+<script src="vendor/echarts.min.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>

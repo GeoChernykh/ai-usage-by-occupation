@@ -27,3 +27,32 @@ wrote countries.json: 442 KB
 wrote subregions.json: 382 KB
 site/data total: 9.49 MB
 elapsed: 9.5s
+
+=== build_data.py 2026-09-15T01:21:17.413672 ===
+claude_ai: 1,636,573 rows read, 408,270 kept
+1p_api: 491,705 rows read, 289,159 kept
+slice occupations: 140,639 rows
+slice major groups: 4,386 rows
+slice tasks: 261,013 rows
+slice countries: 12,220 rows
+slice subregions: 60,686 rows
+months: ['2026-04-01', '2026-05-01']
+task join hit rate: 100.0%
+occupation universe: 746 codes (claude_ai 718, 1p_api 701)
+occupation files: 746, with >=1 task: 655, task rows: 2823
+fixture check (claude_ai, latest month): soc pct h_only h_ai speedup n_tasks
+  15-1299.03   (5.1, 2.05, 13.34, 9.2204, 12)
+  25-4022      (4.22, 2.41, 20.49, 7.0571, 8)
+  27-3041      (2.58, 4.88, 46.17, 6.3418, 10)
+  15-1211      (1.91, 5.21, 66.37, 4.71, 16)
+  15-1251      (1.67, 9.12, 52.35, 10.4527, 11)
+  15-1252      (0.35, 5.9, 47.77, 7.4105, 9)
+  23-1011      (0.62, 5.83, 54.06, 6.4706, 7)
+  13-2011      (0.12, 9.49, 47.07, 12.0969, 13)
+  25-1021      (0.01, 5.21, 48.09, 6.5003, 4)
+wrote index.json: 198 KB
+wrote tasks.json: 750 KB
+wrote countries.json: 442 KB
+wrote subregions.json: 382 KB
+site/data total: 9.49 MB
+elapsed: 6.7s
