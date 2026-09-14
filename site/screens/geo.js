@@ -180,7 +180,7 @@ function paintUseCases(host, rows) {
   if (!top.length) return;
   draw(host.querySelector('#artChart'), Object.assign(baseOption(), {
     tooltip: { trigger: 'axis', valueFormatter: v => v.toFixed(1) + '%' },
-    xAxis: axisValue({ type: 'value', axisLabel: { formatter: '{value}%', color: C.muted } }),
+    xAxis: axisPlain({ type: 'value', axisLabel: { formatter: '{value}%', color: C.muted } }),
     yAxis: axisPlain({ type: 'category', data: top.map(([k]) => humanise(k)) }),
     series: [{ type: 'bar', barWidth: 24, data: top.map(([, v], i) => ({ value: v,
       itemStyle: { color: rankColor(Math.floor((top.length - 1 - i) / (top.length / 4))) } })) }],

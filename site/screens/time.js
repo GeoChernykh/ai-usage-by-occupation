@@ -163,7 +163,7 @@ function paintHero(host, doc, m, d, med) {
     grid: { left: 8, right: 60, top: 8, bottom: 8, containLabel: true },
     tooltip: { trigger: 'axis', axisPointer: { type: 'none' },
                valueFormatter: v => Math.round(v) + ' min' },
-    xAxis: axisValue({ type: 'value', name: '' }),
+    xAxis: axisPlain({ type: 'value', name: '' }),
     yAxis: axisPlain({ type: 'category', data: rows.map(r => r[0]) }),
     series: [{
       type: 'bar', barWidth: 24,
@@ -255,7 +255,7 @@ function paintArtifacts(host, m) {
   const asc = [...top].reverse();
   draw(card.querySelector('#artChart'), Object.assign(baseOption(), {
     tooltip: { trigger: 'axis', valueFormatter: v => v.toFixed(1) + '%' },
-    xAxis: axisValue({ type: 'value', axisLabel: { formatter: '{value}%', color: C.muted } }),
+    xAxis: axisPlain({ type: 'value', axisLabel: { formatter: '{value}%', color: C.muted } }),
     yAxis: axisPlain({ type: 'category', data: asc.map(([k]) => humanise(k)) }),
     series: [{ type: 'bar', barWidth: 24,
       data: asc.map(([, v], i) => ({ value: v,

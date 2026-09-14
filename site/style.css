@@ -247,8 +247,9 @@ td.bar div { height: 24px; }
 
 /* ---------- misc ---------- */
 
-.legend { display: flex; gap: 16px; font-size: 14px; color: var(--muted); margin-bottom: 8px; }
-.legend span { display: flex; align-items: center; gap: 6px; }
+.legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 14px; color: var(--muted); margin-bottom: 8px; }
+.legend span { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.legend select { min-width: 0; flex: 0 1 auto; }
 .legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 
 .callout { font-size: 15px; color: var(--ink); }

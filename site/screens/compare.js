@@ -65,7 +65,7 @@ function paintScatter(host) {
     tooltip: { trigger: 'item', formatter: p =>
       `${esc(p.data.title)}<br>Human: ${num(p.data.value[0], 1)} y<br>` +
       `Claude: ${num(p.data.value[1], 1)} y<br>Usage share: ${pct(p.data.pct)}` },
-    xAxis: axisValue({ type: 'value', name: 'Human education (years)',
+    xAxis: axisPlain({ type: 'value', name: 'Human education (years)',
       nameLocation: 'middle', nameGap: 30, nameTextStyle: { color: C.muted } }),
     yAxis: axisValue({ type: 'value', name: 'Claude education (years)',
       nameLocation: 'middle', nameGap: 36, nameTextStyle: { color: C.muted } }),
@@ -120,7 +120,7 @@ async function paintPair(host, a, b) {
   const pull = doc => BARS.map(x => val(doc, x[0])).reverse();
   draw(card.querySelector('#pair'), Object.assign(baseOption(), {
     tooltip: { trigger: 'axis' },
-    xAxis: axisValue({ type: 'value' }),
+    xAxis: axisPlain({ type: 'value' }),
     yAxis: axisPlain({ type: 'category', data: labels }),
     series: [
       { name: da.title, type: 'bar', barWidth: 12, data: pull(da),

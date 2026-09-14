@@ -85,6 +85,28 @@ const check = (ok, msg) => { console.log((ok ? '  ok   ' : '  FAIL ') + msg); if
   check(first.includes('Tunisia') && first.includes('51.5'), 'coursework top row: ' +
     first.replace(/\s+/g, ' ').trim());
 
+  console.log('Screen 2');
+  await go('?screen=compare&occ=15-1251');
+  check(await page.locator('.rail button').count() === 3, 'Compare rail button present');
+  const pts = await page.evaluate(() => {
+    const c = echarts.getInstanceByDom(document.getElementById('scatter'));
+    return c.getOption().series[0].data.length;
+  });
+  check(pts > 600, 'scatter drew ' + pts + ' points');
+  check(await page.locator('#scatterCard').textContent().then(t => t.includes('parity'))
+    || await page.evaluate(() => !!echarts.getInstanceByDom(
+      document.getElementById('scatter')).getOption().series[0].markLine), 'parity line');
+  const slopePts = await page.evaluate(() => echarts.getInstanceByDom(
+    document.getElementById('slope')).getOption().xAxis[0].data.length);
+  check(slopePts === 7, 'slope chart has ' + slopePts + ' categorical points');
+  check((await page.textContent('#slopeCard .cap')).includes('Read the direction'), 'caveat shown');
+  await page.selectOption('#pickB', '15-1252');
+  await page.waitForTimeout(600);
+  const pairSeries = await page.evaluate(() => echarts.getInstanceByDom(
+    document.getElementById('pair')).getOption().series.map(s => s.name));
+  check(pairSeries.length === 2 && pairSeries[1] === 'Software Developers',
+    'pair redraws: ' + pairSeries.join(' vs '));
+
   console.log('Responsive');
   await page.setViewportSize({ width: 400, height: 900 });
   await page.waitForTimeout(500);
